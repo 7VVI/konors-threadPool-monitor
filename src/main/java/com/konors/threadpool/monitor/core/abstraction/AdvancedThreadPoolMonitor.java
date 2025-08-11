@@ -24,6 +24,33 @@ public interface AdvancedThreadPoolMonitor {
     RegistrationResult registerThreadPool(MonitorableThreadPool threadPool);
     
     /**
+     * 简化注册线程池 - 只需要名称和执行器
+     * @param name 线程池名称
+     * @param executor 线程池执行器
+     * @return 注册结果
+     */
+    default RegistrationResult registerThreadPool(String name, java.util.concurrent.ThreadPoolExecutor executor) {
+        MonitorableThreadPool monitorablePool = 
+                com.konors.threadpool.monitor.core.util.ThreadPoolUtil.createMonitorablePool(name, executor);
+        return registerThreadPool(monitorablePool);
+    }
+    
+    /**
+     * 简化注册线程池 - 带优先级
+     * @param name 线程池名称
+     * @param executor 线程池执行器
+     * @param priority 优先级
+     * @return 注册结果
+     */
+    default RegistrationResult registerThreadPool(String name, 
+                                                  java.util.concurrent.ThreadPoolExecutor executor, 
+                                                  int priority) {
+        MonitorableThreadPool monitorablePool = 
+                com.konors.threadpool.monitor.core.util.ThreadPoolUtil.createMonitorablePool(name, executor, priority);
+        return registerThreadPool(monitorablePool);
+    }
+    
+    /**
      * 取消注册线程池
      * @param poolName 线程池名称
      * @return 是否成功取消注册

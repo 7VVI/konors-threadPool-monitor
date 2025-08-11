@@ -120,6 +120,24 @@ public class DefaultAdvancedThreadPoolMonitor implements AdvancedThreadPoolMonit
     }
     
     /**
+     * 简化注册线程池 - 只需要名称和执行器
+     */
+    public RegistrationResult registerThreadPool(String name, ThreadPoolExecutor executor) {
+        MonitorableThreadPool monitorablePool =
+                com.konors.threadpool.monitor.core.util.ThreadPoolUtil.createMonitorablePool(name, executor);
+        return registerThreadPool(monitorablePool);
+    }
+
+    /**
+     * 简化注册线程池 - 带优先级
+     */
+    public RegistrationResult registerThreadPool(String name, ThreadPoolExecutor executor, int priority) {
+        MonitorableThreadPool monitorablePool =
+                com.konors.threadpool.monitor.core.util.ThreadPoolUtil.createMonitorablePool(name, executor, priority);
+        return registerThreadPool(monitorablePool);
+    }
+
+    /**
      * 为线程池添加专用策略
      */
     private void addStrategiesForThreadPool(MonitorableThreadPool threadPool) {
