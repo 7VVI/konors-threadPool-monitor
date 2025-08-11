@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.konors</groupId>
-    <artifactId>konors-threadPool-monitor</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>konors-threadPool-monitor</name>
-    <description>konors-threadPool-monitor</description>
+    <artifactId>konors-threadpool-monitor-spring-boot-starter</artifactId>
+    <version>1.0.0</version>
+    <name>konors-threadpool-monitor-spring-boot-starter</name>
+    <description>konors-threadpool-monitor-spring-boot-starter</description>
     <url/>
     <licenses>
         <license/>
