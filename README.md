@@ -3,10 +3,11 @@
 [![Java](https://img.shields.io/badge/Java-11+-orange.svg)](https://www.oracle.com/java/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Build Status](https://img.shields.io/badge/Build-Passing-green.svg)](#)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.5+-brightgreen.svg)](https://spring.io/projects/spring-boot)
 
 ## 项目概述
 
-Konors ThreadPool Monitor 是一个企业级的Java线程池监控系统，采用现代化的设计模式和架构，提供全面的线程池监控、告警和分析能力。
+Konors ThreadPool Monitor 是一个企业级的Java线程池监控系统，采用现代化的设计模式和架构，提供全面的线程池监控、告警和分析能力。支持传统Java应用和Spring Boot应用，提供简化的API和自动配置功能。
 
 ### 核心特性
 
@@ -17,6 +18,8 @@ Konors ThreadPool Monitor 是一个企业级的Java线程池监控系统，采�
 - 🚨 **智能告警**: 多级别告警机制，支持自定义阈值
 - 🏗️ **建造者模式**: 流式API，简化配置和使用
 - 📈 **实时监控**: 支持实时状态查询和历史数据分析
+- 🌱 **Spring Boot 支持**: 提供自动配置和REST API
+- 🎛️ **简化注册**: 支持最简单的线程池名称+执行器注册方式
 
 ## 架构设计
 
@@ -26,7 +29,7 @@ Konors ThreadPool Monitor 是一个企业级的Java线程池监控系统，采�
 ┌─────────────────────────────────────────────────────────────┐
 │                    应用层 (Application Layer)                │
 ├─────────────────────────────────────────────────────────────┤
-│  ThreadPoolMonitorBuilder  │  集成测试  │  使用示例         │
+│  Spring Boot Starter │ REST API │ ThreadPoolUtil             │
 ├─────────────────────────────────────────────────────────────┤
 │                    监控层 (Monitor Layer)                   │
 ├─────────────────────────────────────────────────────────────┤
@@ -56,7 +59,104 @@ Konors ThreadPool Monitor 是一个企业级的Java线程池监控系统，采�
 
 ## 快速开始
 
-### 1. 基本使用
+### 1. Spring Boot 集成（推荐）
+
+#### 添加依赖
+
+```xml
+<dependency>
+    <groupId>com.konors</groupId>
+    <artifactId>konors-threadpool-monitor-spring-boot-starter</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+#### 配置属性
+
+```properties
+# 启用监控
+konors.threadpool.monitor.enabled=true
+
+# 监控间隔(毫秒)
+konors.threadpool.monitor.monitor-interval=5000
+
+# 是否异步监控
+konors.threadpool.monitor.async-monitoring=true
+
+# 监控线程池大小
+konors.threadpool.monitor.monitor-thread-pool-size=2
+
+# 告警配置
+konors.threadpool.monitor.alert-enabled=true
+konors.threadpool.monitor.alert-suppression-time=300000
+
+# 预测性告警
+konors.threadpool.monitor.predictive-alert-enabled=false
+
+# 健康检查
+konors.threadpool.monitor.health-check-enabled=true
+
+# 利用率阈值
+konors.threadpool.monitor.default-utilization-warning-threshold=0.75
+konors.threadpool.monitor.default-utilization-critical-threshold=0.90
+
+# 队列阈值
+konors.threadpool.monitor.default-queue-warning-threshold=100
+konors.threadpool.monitor.default-queue-critical-threshold=300
+
+# JMX和指标
+konors.threadpool.monitor.jmx-enabled=false
+konors.threadpool.monitor.metrics-enabled=false
+
+# 数据保留时间(毫秒)
+konors.threadpool.monitor.data-retention-time=7200000
+```
+
+#### 使用监控器
+
+```java
+@Service
+public class TaskService {
+    
+    @Autowired
+    private AdvancedThreadPoolMonitor threadPoolMonitor;
+    
+    @PostConstruct
+    public void init() {
+        // 创建线程池
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+            5, 10, 60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(100)
+        );
+        
+        // 简化注册 - 只需名称和执行器
+        threadPoolMonitor.registerThreadPool("task-pool", executor);
+        
+        // 也可以指定优先级
+        threadPoolMonitor.registerThreadPool("priority-pool", executor, 200);
+    }
+}
+```
+
+### 2. REST API 接口
+
+Spring Boot 集成自动提供以下REST接口：
+
+| 接口 | 方法 | 描述 |
+|------|------|------|
+| `/api/threadpool/monitor/status` | GET | 获取所有线程池状态 |
+| `/api/threadpool/monitor/status/{poolName}` | GET | 获取指定线程池状态 |
+| `/api/threadpool/monitor/statistics` | GET | 获取监控统计信息 |
+| `/api/threadpool/monitor/pools` | GET | 获取已注册线程池名称列表 |
+| `/api/threadpool/monitor/start` | POST | 启动监控 |
+| `/api/threadpool/monitor/stop` | POST | 停止监控 |
+| `/api/threadpool/monitor/pause` | POST | 暂停监控 |
+| `/api/threadpool/monitor/resume` | POST | 恢复监控 |
+| `/api/threadpool/monitor/state` | GET | 获取监控状态 |
+
+### 3. 传统Java应用使用
+
+#### 基本使用
 
 ```java
 // 创建线程池
@@ -65,13 +165,18 @@ ThreadPoolExecutor executor = new ThreadPoolExecutor(
     new LinkedBlockingQueue<>(100)
 );
 
-// 创建监控器
+// 方式1: 使用构建器（推荐）
 AdvancedThreadPoolMonitor monitor = ThreadPoolMonitorBuilder
     .createDefault()
-    .addThreadPool("worker-pool", executor, MonitorableThreadPool.ThreadPoolType.FIXED)
-    .addUtilizationStrategy(0.8, 0.95)  // 80%警告，95%严重
-    .addQueueStrategy(80, 95)           // 队列80%警告，95%严重
+    .addThreadPool("worker-pool", executor) // 简化注册
+    .addUtilizationStrategy(0.8, 0.95)      // 80%警告，95%严重
+    .addQueueStrategy(80, 95)               // 队列80%警告，95%严重
     .buildAndStart();
+
+// 方式2: 直接使用监控器API
+AdvancedThreadPoolMonitor monitor = new DefaultAdvancedThreadPoolMonitor();
+monitor.registerThreadPool("worker-pool", executor);  // 最简单注册
+monitor.startMonitoring();
 
 // 获取监控状态
 Optional<ThreadPoolStatus> status = monitor.getThreadPoolStatus("worker-pool");
@@ -81,7 +186,7 @@ status.ifPresent(s -> {
 });
 ```
 
-### 2. 高级配置
+#### 高级配置
 
 ```java
 // 自定义监控配置
@@ -95,17 +200,15 @@ MonitorConfiguration config = MonitorConfiguration.builder()
 
 // 创建监控器
 AdvancedThreadPoolMonitor monitor = ThreadPoolMonitorBuilder
-    .custom(config)
+    .create()
+    .withMonitorInterval(Duration.ofSeconds(3))
+    .withAdaptiveMonitoring(true)
     .addThreadPool("custom-pool", executor)
-        .withType(MonitorableThreadPool.ThreadPoolType.CUSTOM)
-        .withPriority(100)
-        .withBusinessTag("service", "user-service")
-        .withBusinessTag("environment", "production")
     .addCustomStrategy(new MyCustomStrategy())
     .buildAndStart();
 ```
 
-### 3. 预设配置
+#### 预设配置
 
 ```java
 // Web应用监控
@@ -127,6 +230,46 @@ AdvancedThreadPoolMonitor realtimeMonitor = ThreadPoolMonitorBuilder
     .addThreadPool("realtime-pool", realtimeExecutor)
     .buildAndStart();
 ```
+
+## 简化线程池注册
+
+### 背景
+
+传统方式需要创建复杂的`MonitorableThreadPool`对象，现在支持最简化的注册方式：
+
+### 新的简化API
+
+```java
+// 最简单的注册方式 - 只需要名称和执行器
+monitor.registerThreadPool("pool-name", executor);
+
+// 指定优先级
+monitor.registerThreadPool("pool-name", executor, 200);
+
+// 在构建器中使用
+ThreadPoolMonitorBuilder
+    .createDefault()
+    .addThreadPool("pool1", executor1)
+    .addThreadPool("pool2", executor2, 150)  // 带优先级
+    .buildAndStart();
+```
+
+### 自动推断特性
+
+系统会自动：
+- 推断线程池类型（FIXED、CACHED、SINGLE、CUSTOM）
+- 创建`ThreadPoolConfiguration`配置
+- 设置默认优先级（100）
+- 设置健康状态为true
+
+### 支持的线程池类型
+
+| 线程池类型 | 自动识别条件 |
+|-----------|-------------|
+| `SINGLE` | 核心线程数 = 最大线程数 = 1 |
+| `FIXED` | 核心线程数 = 最大线程数 > 1 |
+| `CACHED` | 核心线程数 = 0, 最大线程数 = Integer.MAX_VALUE |
+| `CUSTOM` | 其他所有情况 |
 
 ## 监控策略
 
@@ -211,7 +354,37 @@ System.out.println("告警总数: " + stats.getTotalAlerts());
 
 ## 配置参考
 
-### 监控配置
+### Spring Boot 配置属性
+
+```properties
+# 基础配置
+konors.threadpool.monitor.enabled=true
+konors.threadpool.monitor.monitor-interval=5000
+konors.threadpool.monitor.async-monitoring=true
+
+# 监控配置
+konors.threadpool.monitor.monitor-thread-pool-size=2
+konors.threadpool.monitor.alert-enabled=true
+konors.threadpool.monitor.alert-suppression-time=300000
+
+# 高级功能
+konors.threadpool.monitor.predictive-alert-enabled=false
+konors.threadpool.monitor.performance-analysis-enabled=true
+konors.threadpool.monitor.health-check-enabled=true
+
+# 阈值配置
+konors.threadpool.monitor.default-utilization-warning-threshold=0.75
+konors.threadpool.monitor.default-utilization-critical-threshold=0.90
+konors.threadpool.monitor.default-queue-warning-threshold=100
+konors.threadpool.monitor.default-queue-critical-threshold=300
+
+# 集成配置
+konors.threadpool.monitor.jmx-enabled=false
+konors.threadpool.monitor.metrics-enabled=false
+konors.threadpool.monitor.data-retention-time=7200000
+```
+
+### 监控配置（编程方式）
 
 ```java
 MonitorConfiguration config = MonitorConfiguration.builder()
@@ -234,7 +407,7 @@ MonitorConfiguration config = MonitorConfiguration.builder()
     .asyncProcessingTimeout(Duration.ofSeconds(30)) // 异步超时
     
     // 告警配置
-    .alertSuppressionTime(Duration.ofMinutes(5))   // 告警抑制时间
+    .alertSuppressionPeriod(Duration.ofMinutes(5))   // 告警抑制时间
     
     // 扩展配置
     .extendedConfig(Map.of(
@@ -269,13 +442,13 @@ DefaultStrategyConfig queueConfig = DefaultStrategyConfig.forQueue()
 
 ```java
 // 好的命名
-monitor.addThreadPool("user-service-http-pool", executor);
-monitor.addThreadPool("order-service-async-pool", executor);
-monitor.addThreadPool("payment-service-batch-pool", executor);
+monitor.registerThreadPool("user-service-http-pool", executor);
+monitor.registerThreadPool("order-service-async-pool", executor);
+monitor.registerThreadPool("payment-service-batch-pool", executor);
 
 // 避免的命名
-monitor.addThreadPool("pool1", executor);
-monitor.addThreadPool("thread-pool", executor);
+monitor.registerThreadPool("pool1", executor);
+monitor.registerThreadPool("thread-pool", executor);
 ```
 
 ### 2. 阈值设置
@@ -295,26 +468,35 @@ monitor.addThreadPool("thread-pool", executor);
 .addQueueStrategy(20, 50)
 ```
 
-### 3. 资源管理
+### 3. Spring Boot 集成最佳实践
 
 ```java
 @Component
-public class ThreadPoolMonitorManager {
+public class ThreadPoolManager {
+    
+    @Autowired
     private AdvancedThreadPoolMonitor monitor;
+    
+    private ThreadPoolExecutor taskExecutor;
+    private ThreadPoolExecutor asyncExecutor;
     
     @PostConstruct
     public void init() {
-        monitor = ThreadPoolMonitorBuilder
-            .forWebApplication()
-            .addThreadPool("main-pool", mainExecutor)
-            .buildAndStart();
+        // 创建线程池
+        taskExecutor = new ThreadPoolExecutor(5, 10, 60L, TimeUnit.SECONDS, 
+            new LinkedBlockingQueue<>(100));
+        asyncExecutor = new ThreadPoolExecutor(3, 6, 30L, TimeUnit.SECONDS, 
+            new LinkedBlockingQueue<>(50));
+        
+        // 注册监控
+        monitor.registerThreadPool("task-executor", taskExecutor);
+        monitor.registerThreadPool("async-executor", asyncExecutor, 200);
     }
     
     @PreDestroy
     public void cleanup() {
-        if (monitor != null) {
-            monitor.stop();
-        }
+        if (taskExecutor != null) taskExecutor.shutdown();
+        if (asyncExecutor != null) asyncExecutor.shutdown();
     }
 }
 ```
@@ -323,7 +505,10 @@ public class ThreadPoolMonitorManager {
 
 ```java
 // 实现告警处理器
+@Component
 public class AlertHandler {
+    
+    @EventListener
     public void handleAlert(MonitorStrategy.MonitorResult result) {
         switch (result.getAlertLevel()) {
             case CRITICAL:
@@ -398,118 +583,109 @@ MonitorConfiguration asyncConfig = MonitorConfiguration.builder()
 2. **告警过于频繁**
    - 调整告警阈值
    - 增加告警抑制时间
-   - 检查监控策略配置
 
-3. **监控延迟过高**
-   - 减少监控频率
-   - 增加监控线程池大小
-   - 优化监控策略逻辑
+3. **Spring Boot 自动配置失效**
+   - 检查是否正确引入starter依赖
+   - 确认配置属性前缀正确：`konors.threadpool.monitor`
+   - 检查`@EnableAutoConfiguration`是否生效
 
-4. **内存使用过高**
-   - 减少历史记录数量
-   - 缩短数据保留时间
-   - 检查是否有内存泄漏
+4. **REST API 无法访问**
+   - 确认Spring Boot Web依赖已添加
+   - 检查URL路径：`/api/threadpool/monitor/*`
+   - 验证监控器是否已启动
 
-### 调试技巧
+5. **线程池注册失败**
+   - 检查线程池名称是否重复
+   - 验证ThreadPoolExecutor是否为null
+   - 查看注册结果的错误信息
+
+### 调试模式
+
+```properties
+# 启用调试日志
+logging.level.com.konors.threadpool.monitor=DEBUG
+
+# 或在Java代码中
+@PostConstruct
+public void enableDebug() {
+    Logger logger = LoggerFactory.getLogger("com.konors.threadpool.monitor");
+    if (logger instanceof ch.qos.logback.classic.Logger) {
+        ((ch.qos.logback.classic.Logger) logger).setLevel(Level.DEBUG);
+    }
+}
+```
+
+## 版本更新
+
+### v1.0.0 新特性
+
+- ✅ **简化线程池注册**: 支持仅使用名称和执行器注册
+- ✅ **Spring Boot Starter**: 提供自动配置和REST API
+- ✅ **REST监控接口**: 标准化的HTTP API
+- ✅ **自动类型推断**: 智能识别线程池类型
+- ✅ **配置属性支持**: 通过application.properties配置
+- ✅ **ThreadPoolUtil工具类**: 简化线程池包装
+
+### 迁移指南
+
+从复杂注册方式迁移到简化方式：
 
 ```java
-// 启用详细日志
-MonitorConfiguration debugConfig = MonitorConfiguration.builder()
-    .extendedConfig(Map.of(
-        "logLevel", "DEBUG",
-        "enableDetailedMetrics", true
-    ))
+// 原来的方式
+MonitorableThreadPool pool = DefaultMonitorableThreadPool.builder()
+    .name("worker-pool")
+    .executor(executor)
+    .type(MonitorableThreadPool.ThreadPoolType.FIXED)
+    .configuration(config)
+    .priority(100)
     .build();
+monitor.registerThreadPool(pool);
 
-// 获取详细统计信息
-MonitorStatistics stats = monitor.getMonitorStatistics();
-System.out.println("详细统计: " + stats.getDetailedStats());
-
-// 检查监控器状态
-System.out.println("监控状态: " + monitor.getMonitoringState());
-System.out.println("注册的线程池: " + monitor.getRegisteredThreadPools());
+// 新的简化方式
+monitor.registerThreadPool("worker-pool", executor);
 ```
 
 ## 项目结构
 
 ```
 konors-threadPool-monitor/
-├── src/
-│   ├── main/
-│   │   └── java/
-│   │       └── com/konors/threadpool/monitor/
-│   │           ├── core/                    # 核心接口和类
-│   │           │   ├── MonitorableThreadPool.java
-│   │           │   ├── ThreadPoolStatus.java
-│   │           │   ├── ThreadPoolMetrics.java
-│   │           │   └── ThreadPoolConfiguration.java
-│   │           ├── strategy/                # 监控策略
-│   │           │   ├── MonitorStrategy.java
-│   │           │   ├── UtilizationMonitorStrategy.java
-│   │           │   └── QueueMonitorStrategy.java
-│   │           ├── factory/                 # 工厂类
-│   │           │   ├── MonitorStrategyFactory.java
-│   │           │   └── DefaultMonitorStrategyFactory.java
-│   │           ├── config/                  # 配置类
-│   │           │   ├── MonitorConfiguration.java
-│   │           │   ├── MonitorContext.java
-│   │           │   └── DefaultStrategyConfig.java
-│   │           ├── monitor/                 # 监控器实现
-│   │           │   ├── AdvancedThreadPoolMonitor.java
-│   │           │   └── DefaultAdvancedThreadPoolMonitor.java
-│   │           ├── builder/                 # 建造者
-│   │           │   └── ThreadPoolMonitorBuilder.java
-│   │           └── impl/                    # 默认实现
-│   │               └── DefaultMonitorableThreadPool.java
-│   └── test/
-│       └── java/
-│           └── com/konors/threadpool/monitor/
-│               └── integration/
-│                   └── IntegrationTest.java # 集成测试
-├── docs/
-│   ├── ADVANCED_MONITOR_USAGE.md           # 使用指南
-│   └── API_REFERENCE.md                    # API参考
-├── README.md                               # 项目说明
-└── pom.xml                                 # Maven配置
+├── src/main/java/
+│   └── com/konors/threadpool/monitor/
+│       ├── core/                    # 核心监控逻辑
+│       │   ├── abstraction/         # 接口和抽象类
+│       │   ├── impl/                # 具体实现
+│       │   ├── builder/             # 构建器
+│       │   ├── factory/             # 工厂类
+│       │   ├── strategy/            # 监控策略
+│       │   └── util/                # 工具类
+│       ├── controller/              # REST控制器
+│       ├── starter/                 # Spring Boot Starter
+│       ├── common/                  # 通用组件
+│       └── config/                  # 配置类
+├── src/main/resources/
+│   ├── META-INF/spring/             # 自动配置
+│   └── application.properties       # 默认配置
+└── src/test/                        # 测试代码
 ```
-
-## 版本历史
-
-### v2.0.0 (当前版本)
-- ✨ 全新的架构设计，采用策略模式和工厂模式
-- 🚀 支持异步监控和批量操作
-- 🎯 提供多种内置监控策略
-- 🔧 支持自定义策略和配置
-- 📊 增强的监控指标和统计信息
-- 🏗️ 流式API和建造者模式
-- 📈 预测性告警和自适应监控
-
-### v1.0.0
-- 基础的线程池监控功能
-- 简单的状态收集和指标计算
 
 ## 贡献指南
 
 1. Fork 项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
 3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 打开 Pull Request
 
 ## 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目使用 MIT 许可证。详情请见 [LICENSE](LICENSE) 文件。
 
 ## 联系方式
 
-- 作者: Konors
-- 邮箱: konors@example.com
+- 作者: zhangYh
 - 项目链接: [https://github.com/konors/threadpool-monitor](https://github.com/konors/threadpool-monitor)
-
-## 致谢
-
-感谢所有为这个项目做出贡献的开发者和用户。
+- 问题反馈: [Issues](https://github.com/konors/threadpool-monitor/issues)
 
 ---
 
-**注意**: 这是一个重构后的高级版本，相比原始版本在架构设计、扩展性、性能和易用性方面都有显著提升。建议在生产环境中使用前进行充分的测试。
+**如果这个项目对你有帮助，请给个 ⭐ Star！**
