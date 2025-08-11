@@ -10,11 +10,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.time.Duration;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * 线程池监控自动配置类
@@ -35,30 +32,6 @@ public class ThreadPoolMonitorAutoConfiguration {
     @ConditionalOnMissingBean
     public MonitorStrategyFactory monitorStrategyFactory(ThreadPoolMonitorProperties properties) {
         return new PropertyBasedMonitorStrategyFactory(properties);
-    }
-
-    @Bean
-    public ExecutorService loginTaskExecutor(AdvancedThreadPoolMonitor advancedThreadPoolMonitor) {
-
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        // 核心池大小
-        executor.setCorePoolSize(Runtime.getRuntime().availableProcessors() / 2);
-        // 最大线程数
-        executor.setMaxPoolSize(Runtime.getRuntime().availableProcessors());
-        // 队列容量
-        executor.setQueueCapacity(100000);
-        executor.setThreadPriority(Thread.MAX_PRIORITY);
-        executor.setDaemon(false);
-        executor.setAllowCoreThreadTimeOut(false);
-        // 线程空闲时间
-        executor.setKeepAliveSeconds(120);
-        // 线程名字前缀
-        executor.setThreadNamePrefix("login-task-executor-");
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-        executor.initialize();
-        advancedThreadPoolMonitor.registerThreadPool("test", executor.getThreadPoolExecutor());
-        return executor.getThreadPoolExecutor();
-
     }
 
     /**

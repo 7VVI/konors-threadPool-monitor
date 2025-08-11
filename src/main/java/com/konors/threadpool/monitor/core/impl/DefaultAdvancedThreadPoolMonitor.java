@@ -197,9 +197,7 @@ public class DefaultAdvancedThreadPoolMonitor implements AdvancedThreadPoolMonit
         for (Map.Entry<String, MonitorableThreadPool> entry : registeredPools.entrySet()) {
             try {
                 ThreadPoolStatus status = collectThreadPoolStatus(entry.getValue());
-                if (status != null) {
-                    statusMap.put(entry.getKey(), status);
-                }
+                statusMap.put(entry.getKey(), status);
             } catch (Exception e) {
                 log.error("Failed to collect status for thread pool: {}", entry.getKey(), e);
             }
